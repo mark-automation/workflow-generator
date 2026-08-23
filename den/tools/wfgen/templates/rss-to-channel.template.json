@@ -1,0 +1,93 @@
+{
+  "name": "{{ $wfgen.WORKFLOW_NAME }}",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "{{ $wfgen.SCHEDULE_FIELD }}",
+              "triggerAtHour": "{{ $wfgen.TRIGGER_AT_HOUR }}",
+              "triggerAtMinute": "{{ $wfgen.TRIGGER_AT_MINUTE }}"
+            }
+          ]
+        }
+      },
+      "id": "rss-trigger",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "{{ $wfgen.RSS_URL }}",
+        "options": {}
+      },
+      "id": "rss-read",
+      "name": "Read RSS Feed",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 3,
+      "onError": "continueRegularOutput",
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "{{ $wfgen.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"content\": \"📰 **\" + $json.title + \"**\\n\" + $json.link }",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "rss-post",
+      "name": "Post to Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput",
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Read RSS Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "Post to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "x-wfgen": {
+    "description": "Polls an RSS feed on a schedule and posts each new item's title and link to a Discord channel webhook.",
+    "brief_keywords": ["rss", "feed", "news", "posts", "channel", "cross-post", "monitor"],
+    "params": {
+      "WORKFLOW_NAME":   { "required": false, "default": "RSS to Channel", "description": "Workflow name shown in n8n" },
+      "SCHEDULE_FIELD":  { "required": false, "default": "hours", "description": "Interval unit: minutes | hours | days" },
+      "TRIGGER_AT_HOUR": { "required": false, "default": 0, "description": "Hour of day (used when field=days)" },
+      "TRIGGER_AT_MINUTE": { "required": false, "default": 0, "description": "Minute of hour" },
+      "RSS_URL": { "required": true, "description": "Feed URL ($param placeholder)" },
+      "DISCORD_WEBHOOK_URL": { "required": true, "description": "Discord channel webhook URL ($param placeholder)" }
+    }
+  }
+}
