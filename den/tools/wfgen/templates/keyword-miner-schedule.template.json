@@ -1,0 +1,121 @@
+{
+  "name": "{{ $wfgen.WORKFLOW_NAME }}",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "{{ $wfgen.SCHEDULE_FIELD }}",
+              "triggerAtHour": "{{ $wfgen.TRIGGER_AT_HOUR }}",
+              "triggerAtMinute": "{{ $wfgen.TRIGGER_AT_MINUTE }}"
+            }
+          ]
+        }
+      },
+      "id": "km-trigger",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "{{ $wfgen.SOURCE_URL }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "km-fetch",
+      "name": "Fetch Source",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput",
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Keyword miner: count occurrences of the configured keywords.\nconst keywords = \"{{ $wfgen.KEYWORDS }}\".split(',').map(k => k.trim().toLowerCase()).filter(Boolean);\nconst text = JSON.stringify($input.all().map(i => i.json)).toLowerCase();\nconst counts = {};\nfor (const kw of keywords) {\n  const m = text.match(new RegExp(kw.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'), 'g'));\n  counts[kw] = m ? m.length : 0;\n}\nconst lines = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}: ${v}`);\nreturn [{ json: { content: `Keyword report — ${new Date().toISOString().slice(0, 10)}\\n\\n` + lines.join('\\n'), counts } }];"
+      },
+      "id": "km-mine",
+      "name": "Mine Keywords",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "{{ $wfgen.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"content\": {{ JSON.stringify($json.content) }} }",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "km-post",
+      "name": "Post Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput",
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Fetch Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Source": {
+      "main": [
+        [
+          {
+            "node": "Mine Keywords",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mine Keywords": {
+      "main": [
+        [
+          {
+            "node": "Post Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "x-wfgen": {
+    "description": "On a schedule, fetches a JSON source, counts occurrences of target keywords, and posts a ranked keyword report to Discord.",
+    "brief_keywords": ["keyword", "mine", "trend", "track", "mentions", "count", "analyze"],
+    "params": {
+      "WORKFLOW_NAME":   { "required": false, "default": "Keyword Miner", "description": "Workflow name shown in n8n" },
+      "SCHEDULE_FIELD":  { "required": false, "default": "days", "description": "Interval unit" },
+      "TRIGGER_AT_HOUR": { "required": false, "default": 7, "description": "Hour of day (used when field=days)" },
+      "TRIGGER_AT_MINUTE": { "required": false, "default": 30, "description": "Minute of hour" },
+      "SOURCE_URL": { "required": true, "description": "JSON source URL to fetch ($param placeholder)" },
+      "KEYWORDS": { "required": false, "default": "automation, ai, workflow", "description": "Comma-separated keywords to count" },
+      "DISCORD_WEBHOOK_URL": { "required": true, "description": "Discord channel webhook URL ($param placeholder)" }
+    }
+  }
+}
