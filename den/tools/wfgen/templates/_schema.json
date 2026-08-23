@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "wfgen template param contract",
+  "description": "Each template's x-wfgen.params block declares params against this shape. compile() rejects a brief unless every required param resolves to a non-$param value.",
+  "type": "object",
+  "patternProperties": {
+    "^[A-Z][A-Z0-9_]*$": {
+      "type": "object",
+      "required": ["required", "description"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "default": { "description": "Value used when the brief does not supply this param. Required params MUST NOT carry a default." },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
