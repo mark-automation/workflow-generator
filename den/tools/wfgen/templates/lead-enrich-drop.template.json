@@ -1,0 +1,139 @@
+{
+  "name": "{{ $wfgen.WORKFLOW_NAME }}",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "{{ $wfgen.WEBHOOK_PATH }}",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "le-trigger",
+      "name": "Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lead enrich-drop: normalize + score the incoming lead.\nconst lead = $input.first().json.body || $input.first().json;\nconst email = String(lead.email || '').trim().toLowerCase();\nconst company = String(lead.company || '').trim();\nconst source = String(lead.source || 'unknown');\nlet score = 0;\nif (email && /^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) score += 40;\nif (company) score += 30;\nif (source !== 'unknown') score += 20;\nif (String(lead.message || '').length > 80) score += 10;\nconst tier = score >= 70 ? 'hot' : score >= 40 ? 'warm' : 'cold';\nreturn [{ json: { email, company, source, score, tier, enrichedAt: new Date().toISOString() } }];"
+      },
+      "id": "le-enrich",
+      "name": "Enrich Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.tier }}",
+              "operation": "equals",
+              "value2": "{{ $wfgen.HOT_TIER }}"
+            }
+          ]
+        }
+      },
+      "id": "le-route",
+      "name": "Hot Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "{{ $wfgen.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"content\": \"🔥 HOT LEAD: \" + $json.email + (\" (\" + $json.company + \")\" if $json.company else \"\") + \" — score \" + $json.score }",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "le-alert",
+      "name": "Alert Hot Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput",
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "{{ $wfgen.CRM_ENDPOINT_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "le-crm",
+      "name": "Drop to CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput",
+      "position": [900, 400]
+    }
+  ],
+  "connections": {
+    "Lead Webhook": {
+      "main": [
+        [
+          {
+            "node": "Enrich Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich Lead": {
+      "main": [
+        [
+          {
+            "node": "Hot Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hot Check": {
+      "main": [
+        [
+          {
+            "node": "Alert Hot Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drop to CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "x-wfgen": {
+    "description": "Webhook receives a lead, normalizes and scores it (email/company/source/message), routes hot leads to a Discord alert and all leads to a CRM endpoint.",
+    "brief_keywords": ["lead", "enrich", "score", "crm", "webhook", "capture", "drop"],
+    "params": {
+      "WORKFLOW_NAME":   { "required": false, "default": "Lead Enrich Drop", "description": "Workflow name shown in n8n" },
+      "WEBHOOK_PATH": { "required": false, "default": "lead-enrich", "description": "Webhook path (POST /webhook/<path>)" },
+      "HOT_TIER": { "required": false, "default": "hot", "description": "Tier value that triggers the hot-lead alert" },
+      "DISCORD_WEBHOOK_URL": { "required": true, "description": "Discord webhook for hot-lead alerts ($param placeholder)" },
+      "CRM_ENDPOINT_URL": { "required": true, "description": "CRM intake endpoint ($param placeholder)" }
+    }
+  }
+}
