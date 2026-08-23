@@ -1,0 +1,149 @@
+{
+  "name": "{{ $wfgen.WORKFLOW_NAME }}",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "{{ $wfgen.SCHEDULE_FIELD }}",
+              "triggerAtHour": "{{ $wfgen.TRIGGER_AT_HOUR }}",
+              "triggerAtMinute": "{{ $wfgen.TRIGGER_AT_MINUTE }}"
+            }
+          ]
+        }
+      },
+      "id": "bv-trigger",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "{{ $wfgen.CHECK_METHOD }}",
+        "url": "{{ $wfgen.TARGET_URL }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "bv-check",
+      "name": "Run Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Backup/verify report: judge the check result and build a status line.\nconst items = $input.all();\nconst failed = items.length === 0 || items.every(i => i.json.error !== undefined);\nconst okCount = items.filter(i => i.json.error === undefined).length;\nconst status = failed ? '❌ VERIFY FAILED' : '✅ BACKUP VERIFIED';\nreturn [{ json: {\n  content: `${status} — ${new Date().toISOString()}\\nTarget: {{ $wfgen.TARGET_NAME }}\\nChecks passed: ${okCount}/${items.length}`,\n  ok: !failed\n} }];"
+      },
+      "id": "bv-report",
+      "name": "Build Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "bv-route",
+      "name": "Passed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "{{ $wfgen.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"content\": {{ JSON.stringify($json.content) }} }",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "bv-notify",
+      "name": "Notify Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput",
+      "position": [1120, 200]
+    }
+  ],
+  "connections": {
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Run Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Check": {
+      "main": [
+        [
+          {
+            "node": "Build Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Report": {
+      "main": [
+        [
+          {
+            "node": "Passed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Passed?": {
+      "main": [
+        [
+          {
+            "node": "Notify Discord",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "x-wfgen": {
+    "description": "Scheduled verification: probes a target URL, builds a pass/fail report, and notifies Discord only when the check fails (or always, if NOTIFY_ON_PASS=true).",
+    "brief_keywords": ["backup", "verify", "health", "check", "report", "dr", "monitor"],
+    "params": {
+      "WORKFLOW_NAME":   { "required": false, "default": "Backup Verify Report", "description": "Workflow name shown in n8n" },
+      "SCHEDULE_FIELD":  { "required": false, "default": "days", "description": "Interval unit" },
+      "TRIGGER_AT_HOUR": { "required": false, "default": 4, "description": "Hour of day (used when field=days)" },
+      "TRIGGER_AT_MINUTE": { "required": false, "default": 0, "description": "Minute of hour" },
+      "CHECK_METHOD": { "required": false, "default": "GET", "description": "HTTP method for the check request" },
+      "TARGET_URL": { "required": true, "description": "URL to probe ($param placeholder)" },
+      "TARGET_NAME": { "required": false, "default": "primary target", "description": "Human-readable name shown in the report" },
+      "DISCORD_WEBHOOK_URL": { "required": true, "description": "Discord webhook for alerts ($param placeholder)" }
+    }
+  }
+}
