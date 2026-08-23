@@ -1,0 +1,91 @@
+{
+  "name": "{{ $wfgen.WORKFLOW_NAME }}",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "{{ $wfgen.SCHEDULE_FIELD }}",
+              "triggerAtHour": "{{ $wfgen.TRIGGER_AT_HOUR }}",
+              "triggerAtMinute": "{{ $wfgen.TRIGGER_AT_MINUTE }}"
+            }
+          ]
+        }
+      },
+      "id": "dd-trigger",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect digest items from a JSON feed or prior node payload.\nconst items = $input.all();\nconst lines = items.map((it, i) => `${i + 1}. ${it.json.title || it.json.summary || JSON.stringify(it.json).slice(0, 120)}`);\nconst header = `{{ $wfgen.DIGEST_TITLE }} — ${new Date().toISOString().slice(0, 10)}`;\nreturn [{ json: { content: [header, '', ...lines].join('\\n'), count: items.length } }];"
+      },
+      "id": "dd-collect",
+      "name": "Collect Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "{{ $wfgen.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"content\": {{ JSON.stringify($json.content) }} }",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "dd-post",
+      "name": "Post to Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput",
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Collect Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Items": {
+      "main": [
+        [
+          {
+            "node": "Post to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "x-wfgen": {
+    "description": "Periodic digest: collects items on a schedule and posts a formatted summary to a Discord channel webhook.",
+    "brief_keywords": ["digest", "daily", "weekly", "summary", "report", "schedule", "discord"],
+    "params": {
+      "WORKFLOW_NAME":   { "required": false, "default": "Discord Digest", "description": "Workflow name shown in n8n" },
+      "SCHEDULE_FIELD":  { "required": false, "default": "days", "description": "Interval unit: minutes | hours | days" },
+      "TRIGGER_AT_HOUR": { "required": false, "default": 9, "description": "Hour of day (0-23, server TZ) when days interval fires" },
+      "TRIGGER_AT_MINUTE": { "required": false, "default": 0, "description": "Minute of hour (0-59)" },
+      "DIGEST_TITLE":    { "required": false, "default": "Daily Digest", "description": "Header line of the posted digest" },
+      "DISCORD_WEBHOOK_URL": { "required": true, "description": "Discord channel webhook URL ($param placeholder)" }
+    }
+  }
+}
