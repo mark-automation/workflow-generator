@@ -1,0 +1,199 @@
+{
+  "name": "Speed-to-Lead Engine — AI Qualify, Route & Book",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## ⚡ Speed-to-Lead Engine\n\n**Setup (~15 min):**\n1. Import this workflow → activate it → copy the **Production webhook URL**\n2. Point your form / ad platform / chatbot to POST that URL\n3. Connect credentials: **Google Sheets** (create a sheet, paste its ID below), **Gmail**, **Slack**\n4. Optional: swap the rule-based scorer in *AI Qualifier* for an OpenAI call (prompt pre-built in the node)\n\nScoring: HOT ≥ 80 · WARM ≥ 55 · COLD < 55",
+        "height": 500,
+        "width": 340
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-620, -140]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "speed-to-lead",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-220, 180],
+      "webhookId": "b7e3f1a2-5c4d-4e6f-9a8b-1c2d3e4f5a6b"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "f1", "name": "name", "type": "string", "value": "={{ $json.body.name || $json.name || 'Unknown' }}" },
+            { "id": "f2", "name": "email", "type": "string", "value": "={{ $json.body.email || $json.email || '' }}" },
+            { "id": "f3", "name": "phone", "type": "string", "value": "={{ $json.body.phone || $json.phone || '' }}" },
+            { "id": "f4", "name": "company", "type": "string", "value": "={{ $json.body.company || $json.company || '' }}" },
+            { "id": "f5", "name": "source", "type": "string", "value": "={{ $json.body.source || $json.source || 'unknown' }}" },
+            { "id": "f6", "name": "message", "type": "string", "value": "={{ $json.body.message || $json.message || '' }}" },
+            { "id": "f7", "name": "received_at", "type": "string", "value": "={{ $now.toISO() }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "name": "Normalize Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [0, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── AI Qualifier ─────────────────────────────────────────────\n// Deterministic intent scoring with an optional LLM upgrade.\n// To upgrade: send $json.llm_prompt to OpenAI (chat/completions) and\n// replace `score`/`reasons` with the model's JSON response.\n\nconst lead = $input.first().json;\nconst msg = (lead.message || '').toLowerCase();\nconst domain = (lead.email.split('@')[1] || '').toLowerCase();\nconst freeMail = /(gmail|yahoo|hotmail|outlook|icloud)\\./.test(domain);\nconst reasons = [];\nlet score = 42;\n\n// 1. Budget signal\nif (/budget|pricing|quote|cost|\\$\\d|approved/.test(msg)) {\n  score += 25; reasons.push('Budget/pricing language (+25)');\n} else { reasons.push('No budget signal (+0)'); }\n\n// 2. Urgency signal\nif (/asap|urgent|this week|immediately|today|move fast|deadline/.test(msg)) {\n  score += 20; reasons.push('Urgency language (+20)');\n}\n\n// 3. Domain quality\nif (domain && !freeMail) { score += 15; reasons.push('Corporate domain (+15)'); }\nelse if (freeMail) { reasons.push('Free-mail domain (+0)'); }\n\n// 4. Source weighting\nconst ref = /referral|partner/i.test(lead.source);\nconst paid = /ads|campaign/i.test(lead.source);\nif (ref) { score += 10; reasons.push('Referral source (+10)'); }\nelse if (paid) { score += 5; reasons.push('Paid source (+5)'); }\n\n// 5. Effort signal\nif (msg.length > 140) { score += 8; reasons.push('Detailed inquiry (+8)'); }\n\nscore = Math.max(0, Math.min(100, score));\nconst route = score >= 80 ? 'hot' : score >= 55 ? 'warm' : 'cold';\n\n// Pre-built LLM prompt (for the optional upgrade):\nconst llm_prompt =\n  'You are a lead-qualification engine. Score this inbound lead 0-100 on ' +\n  'purchase intent given: budget signals, urgency, business fit, effort. ' +\n  'Respond ONLY with JSON {\"score\": <int>, \"reasons\": [string], \"route\": ' +\n  '\"hot|warm|cold\"} where hot>=80, warm>=55.\\n\\nLEAD:\\n' +\n  JSON.stringify(lead, null, 2);\n\nreturn [{ json: {\n  ...lead,\n  score,\n  route,\n  reasons,\n  llm_prompt,\n  domain,\n  qualified_at: new Date().toISOString()\n} }];"
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000004",
+      "name": "AI Qualifier",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 180]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+                "conditions": [
+                  { "id": "hot-1", "leftValue": "={{ $json.score }}", "rightValue": 80, "operator": { "type": "number", "operation": "gte" } }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hot"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+                "conditions": [
+                  { "id": "warm-1", "leftValue": "={{ $json.score }}", "rightValue": 55, "operator": { "type": "number", "operation": "gte" } }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "warm"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "a1b2c3d4-0005-4000-8000-000000000005",
+      "name": "Route by Score",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [440, 180]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "id" },
+        "sheetName": { "__rl": true, "value": "Leads", "mode": "name" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "received_at": "={{ $json.received_at }}",
+            "name": "={{ $json.name }}",
+            "email": "={{ $json.email }}",
+            "company": "={{ $json.company }}",
+            "source": "={{ $json.source }}",
+            "score": "={{ $json.score }}",
+            "route": "={{ $json.route }}",
+            "reasons": "={{ $json.reasons.join('; ') }}",
+            "message": "={{ $json.message }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0006-4000-8000-000000000006",
+      "name": "Log Lead",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [680, -40]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": { "__rl": true, "value": "#sales", "mode": "name" },
+        "text": "=🔥 HOT LEAD ({{ $json.score }}/100)\n*{{ $json.name }}* — {{ $json.company || 'n/a' }}\n✉️ {{ $json.email }}\n📍 {{ $json.source }}\n💬 {{ $json.message.slice(0, 220) }}\n_{{ $json.reasons.join(' · ') }}_",
+        "otherOptions": {}
+      },
+      "id": "a1b2c3d4-0007-4000-8000-000000000007",
+      "name": "Slack Hot Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [680, 160]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "Re: your inquiry — quick next step",
+        "emailType": "text",
+        "message": "=Hi {{ $json.name.split(' ')[0] }},\n\nThanks for reaching out — I saw your message come in and wanted to get right back to you.\n\nGrab any slot that suits you and we'll map it live: https://cal.com/you/discovery\n\nJordan",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0008-4000-8000-000000000008",
+      "name": "Send Instant Reply (Hot)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [680, 360]
+    },
+    {
+      "parameters": {
+        "sendTo": "owner@example.com",
+        "subject": "📋 Warm lead digest: {{ $json.name }} ({{ $json.score }}/100)",
+        "emailType": "text",
+        "message": "=New warm lead worth a look:\n\nName: {{ $json.name }}\nEmail: {{ $json.email }}\nSource: {{ $json.source }}\nScore: {{ $json.score }}/100\nWhy: {{ $json.reasons.join('; ') }}\n\nMessage:\n{{ $json.message }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0009-4000-8000-000000000009",
+      "name": "Queue Warm Digest",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [680, 560]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"processed\",\n  \"score\": {{ $json.score }},\n  \"route\": \"{{ $json.route }}\",\n  \"reasons\": {{ JSON.stringify($json.reasons) }}\n}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0010-4000-8000-000000000010",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [940, 260]
+    }
+  ],
+  "connections": {
+    "Lead Webhook": { "main": [[{ "node": "Normalize Lead", "type": "main", "index": 0 }]] },
+    "Normalize Lead": { "main": [[{ "node": "AI Qualifier", "type": "main", "index": 0 }]] },
+    "AI Qualifier": { "main": [[{ "node": "Route by Score", "type": "main", "index": 0 }]] },
+    "Route by Score": {
+      "main": [
+        [{ "node": "Log Lead", "type": "main", "index": 0 }, { "node": "Slack Hot Alert", "type": "main", "index": 0 }, { "node": "Send Instant Reply (Hot)", "type": "main", "index": 0 }],
+        [{ "node": "Queue Warm Digest", "type": "main", "index": 0 }],
+        [{ "node": "Log Lead", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log Lead": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] },
+    "Slack Hot Alert": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] },
+    "Send Instant Reply (Hot)": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] },
+    "Queue Warm Digest": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

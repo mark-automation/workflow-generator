@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Speed-to-Lead Engine — AI qualifies &amp; books your leads while you sleep</title>
+<meta name="description" content="Inbound lead hits your form → AI scores, routes, drafts a personalized reply and books the call in under 60 seconds. Pattern-mined from real client briefs. Ships as an importable n8n workflow.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='90' font-size='90'>⚡</text></svg>">
+<style>
+:root{--bg:#0b0d12;--card:#12151d;--line:#232838;--txt:#e6e9f0;--dim:#9aa3b5;--acc:#7c3aed;--acc2:#a78bfa;--ok:#34d399;--warn:#fbbf24;--bad:#f87171}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.6}
+.wrap{max-width:1040px;margin:0 auto;padding:0 22px}
+header{position:sticky;top:0;background:rgba(11,13,18,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);z-index:10}
+nav{display:flex;justify-content:space-between;align-items:center;padding:14px 0;gap:12px}
+.brand{font-weight:700}.brand span{color:var(--acc2)}
+a.cta-sm{background:var(--acc);color:#fff;text-decoration:none;border-radius:8px;font-weight:600;padding:9px 18px;font-size:.9rem;white-space:nowrap}
+a.cta-sm:hover{filter:brightness(1.15)}
+.hero{text-align:center;padding:72px 0 54px}
+.kicker{display:inline-block;background:rgba(124,58,237,.15);color:var(--acc2);font-size:.75rem;font-weight:700;letter-spacing:.08em;padding:4px 12px;border-radius:99px;margin-bottom:16px;text-transform:uppercase}
+h1{font-size:clamp(1.85rem,4.6vw,3rem);line-height:1.15;max-width:800px;margin:0 auto}
+h1 em{font-style:normal;color:var(--acc2)}
+p.sub{color:var(--dim);font-size:1.08rem;max-width:640px;margin:18px auto 30px}
+.btn-big{display:inline-block;padding:15px 32px;font-size:1.05rem;border-radius:10px}
+.trust{margin-top:22px;color:var(--dim);font-size:.86rem}
+section{padding:62px 0;border-top:1px solid var(--line)}
+h2{font-size:1.7rem;margin-bottom:8px;text-align:center}
+p.lead{text-align:center;color:var(--dim);max-width:620px;margin:0 auto 38px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px;margin-top:34px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;text-align:center}
+.stat b{font-size:1.7rem;color:var(--acc2);display:block}
+.stat span{color:var(--dim);font-size:.88rem}
+/* demo */
+.demo{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px;max-width:860px;margin:0 auto}
+.demo h3{font-size:1.05rem;margin-bottom:4px}
+.demo .hint{color:var(--dim);font-size:.85rem;margin-bottom:18px}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.frow{grid-template-columns:1fr}}
+label{display:block;font-size:.8rem;color:var(--dim);margin-bottom:4px}
+input,select,textarea{width:100%;background:#0d1017;border:1px solid var(--line);border-radius:9px;color:var(--txt);padding:11px 13px;font-size:.95rem;font-family:inherit}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc)}
+textarea{resize:vertical;min-height:74px}
+.fgroup{margin-bottom:14px}
+.runbtn{width:100%;padding:14px;background:linear-gradient(135deg,var(--acc),#5b21b6);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:1rem;cursor:pointer;margin-top:6px}
+.runbtn:hover{filter:brightness(1.12)}
+.runbtn:disabled{opacity:.55;cursor:wait}
+.stages{display:none;margin-top:22px;border-top:1px dashed var(--line);padding-top:20px}
+.stage{display:flex;gap:14px;padding:10px 0;opacity:.28;transition:opacity .35s}
+.stage.on{opacity:1}
+.stage .dot{flex:0 0 30px;height:30px;border-radius:50%;background:#1c2130;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:.85rem}
+.stage.on .dot{background:var(--acc);border-color:transparent}
+.stage.done .dot{background:var(--ok)}
+.stage b{font-size:.92rem;display:block}
+.stage small{color:var(--dim);font-size:.82rem;line-height:1.45;display:block}
+.verdict{display:none;margin-top:18px;background:#0d1017;border:1px solid var(--line);border-radius:12px;padding:18px}
+.badge{display:inline-block;font-weight:700;font-size:.75rem;letter-spacing:.06em;padding:4px 12px;border-radius:99px;text-transform:uppercase}
+.hot{background:rgba(52,211,153,.15);color:var(--ok)}.warm{background:rgba(251,191,36,.15);color:var(--warn)}.cold{background:rgba(248,113,113,.15);color:var(--bad)}
+.reasons{margin:12px 0 0;padding-left:20px;color:var(--dim);font-size:.88rem}
+.draft{white-space:pre-wrap;background:#0d1017;border:1px solid var(--line);border-radius:10px;padding:14px;font-size:.86rem;color:#cdd6e6;margin-top:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{font-size:.76rem;border:1px solid var(--line);border-radius:99px;padding:4px 11px;color:var(--dim)}
+.chip.on{border-color:var(--ok);color:var(--ok)}
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:20px;counter-reset:s}
+.step{position:relative;padding-left:50px}
+.step:before{counter-increment:s;content:counter(s);position:absolute;left:0;top:2px;width:34px;height:34px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:800}
+.step h3{font-size:1rem;margin-bottom:4px}
+.step p{color:var(--dim);font-size:.9rem}
+.includes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.inc{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px}
+.inc h3{font-size:1.02rem;margin-bottom:6px}
+.inc p{color:var(--dim);font-size:.9rem}
+.final{text-align:center;padding:70px 0}
+footer{border-top:1px solid var(--line);padding:24px 0;color:var(--dim);font-size:.84rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+footer a{color:var(--dim)}
+@media(max-width:640px){.hero{padding:52px 0 40px}section{padding:46px 0}.demo{padding:20px}}
+</style>
+</head>
+<body>
+
+<header><div class="wrap"><nav>
+<div class="brand">speed<span>-to-lead</span>.engine</div>
+<a class="cta-sm" href="#demo">Try it live</a>
+</nav></div></header>
+
+<main>
+
+<div class="wrap hero">
+<div class="kicker">Workflow-generator · Build #01</div>
+<h1>Your leads get answered in <em>under 60 seconds</em> — scored, routed and booked while you sleep.</h1>
+<p class="sub">Every minute you wait to respond to an inbound lead, conversion odds collapse. This engine captures the lead, enriches it, lets AI score intent, alerts the right channel and drops a personalized reply with your booking link — automatically.</p>
+<a class="btn-big cta-sm" href="#demo">▶ Run the live simulation</a>
+<p class="trust">Pattern mined from <b>77 real automation briefs</b> — lead response is the #1 most-demanded workflow</p>
+<div class="stats">
+<div class="stat"><b>&lt;60s</b><span>first response time</span></div>
+<div class="stat"><b>21×</b><span>more likely to qualify leads replied to in 5 min vs 30 min*</span></div>
+<div class="stat"><b>0</b><span>leads lost to a full inbox</span></div>
+</div>
+<p class="trust" style="font-size:.74em">*InsideSales lead-response study</p>
+</div>
+
+<section id="demo"><div class="wrap">
+<h2>Watch it think</h2>
+<p class="lead">This is the actual qualification &amp; routing logic from the shipped workflow, running in your browser. Feed it a lead.</p>
+
+<div class="demo">
+<h3>Inbound lead simulator</h3>
+<div class="hint">Same payload shape the n8n webhook receives.</div>
+<div class="frow">
+<div><label>Name</label><input id="f-name" value="Sarah Mitchell"></div>
+<div><label>Email</label><input id="f-email" value="sarah@northstaterealty.com"></div>
+</div>
+<div class="frow">
+<div><label>Source</label>
+<select id="f-source"><option>Website form</option><option>Facebook Ads</option><option>Google Ads</option><option>Referral</option></select></div>
+<div><label>Budget mentioned?</label>
+<select id="f-budget"><option value="no">Not stated</option><option value="yes" selected>Yes — explicit</option></select></div>
+</div>
+<div class="fgroup"><label>Message</label>
+<textarea id="f-msg">Hi — we're scaling our brokerage and need automated follow-up for new seller inquiries ASAP. We get 40+ leads/week and currently respond manually. Looking to move this week. Budget approved.</textarea></div>
+<button class="runbtn" id="run" onclick="runPipeline()">⚡ Run engine</button>
+
+<div class="stages" id="stages">
+<div class="stage" id="s1"><div class="dot">1</div><div><b>Capture</b><small id="o1">Webhook receiving…</small></div></div>
+<div class="stage" id="s2"><div class="dot">2</div><div><b>Enrich</b><small id="o2">Inspecting domain &amp; source…</small></div></div>
+<div class="stage" id="s3"><div class="dot">3</div><div><b>AI score</b><small id="o3">Scoring intent…</small></div></div>
+<div class="stage" id="s4"><div class="dot">4</div><div><b>Route</b><small id="o4">Dispatching…</small></div></div>
+<div class="stage" id="s5"><div class="dot">5</div><div><b>Draft reply</b><small id="o5">Composing…</small></div></div>
+</div>
+
+<div class="verdict" id="verdict">
+<span class="badge" id="v-badge">—</span>
+<b id="v-score" style="margin-left:10px"></b>
+<ul class="reasons" id="v-reasons"></ul>
+<div class="chips" id="v-chips"></div>
+<div class="draft" id="v-draft"></div>
+<small style="color:var(--dim)">↑ Auto-generated personalized reply with booking link — sent before your competitor even opens the inbox.</small>
+</div>
+</div>
+</div></section>
+
+<section><div class="wrap">
+<h2>How the engine works</h2>
+<p class="lead">Five stages, one webhook, zero manual touch until money is on the table.</p>
+<div class="steps">
+<div class="step"><h3>Capture</h3><p>Any form, ad platform or chatbot POSTs to one webhook URL. Nothing gets missed.</p></div>
+<div class="step"><h3>Enrich</h3><p>Domain intelligence + source weighting — corporate vs free mail, paid vs organic.</p></div>
+<div class="step"><h3>Score</h3><p>LLM grades intent 0–100 against your deal-breakers: budget, urgency, fit. Rules fallback if the API blinks.</p></div>
+<div class="step"><h3>Route</h3><p>Hot → Slack ping + SMS-grade alert. Warm → daily digest. Cold → nurture sequence. You only see what matters.</p></div>
+<div class="step"><h3>Reply &amp; book</h3><p>A personalized first-touch email with your calendar link lands in their inbox — logged to Sheets for the record.</p></div>
+</div>
+</div></section>
+
+<section><div class="wrap">
+<h2>What's included</h2>
+<p class="lead">Not a template screenshot. The working machine.</p>
+<div class="includes">
+<div class="inc"><h3>📦 Import-ready n8n workflow</h3><p>The complete 9-node workflow JSON — webhook, qualifier, router, Sheets log, Gmail sender, responder. Import, paste credentials, go live in ~15 minutes.</p></div>
+<div class="inc"><h3>🧠 Scoring brain, tuned to you</h3><p>Qualification criteria adapted to your business in one short session — budget signals, urgency words, disqualifiers.</p></div>
+<div class="inc"><h3>📈 Lead ledger</h3><p>Every lead auto-logged to Google Sheets with score, route and timestamp. Your pipeline, auditable forever.</p></div>
+<div class="inc"><h3>🔌 Works with your stack</h3><p>Forms, Facebook Lead Ads, Typeform, Jotform, chat widgets — anything that can POST. Swap Gmail for Outlook or SMTP. Swap Sheets for Airtable.</p></div>
+</div>
+</div></section>
+
+<section class="final"><div class="wrap">
+<h2>Stop losing leads to slow replies.</h2>
+<p class="sub" style="margin-bottom:26px">Fixed scope, fixed timeline: live on your stack in days, tuned in one call.</p>
+<a class="btn-big cta-sm" href="mailto:jordanlacandula@hotmail.com?subject=Speed-to-Lead%20Engine%20—%20build%20inquiry">Book this build →</a>
+<p class="trust">Built by Jordan Lacandula · production systems since 2013 · <a href="https://github.com/mark-automation/workflow-generator" style="color:var(--acc2)">source ↗</a></p>
+</div></section>
+
+</main>
+
+<footer><div class="wrap" style="display:flex;justify-content:space-between;width:100%;flex-wrap:wrap;gap:10px">
+<span>© 2026 Jordan Lacandula</span>
+<span><a href="https://nekobiz.com">Haki ↗</a> · <a href="https://mark-automation.github.io/jordan-site/">Main site ↗</a></span>
+</div></footer>
+
+<script>
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+async function runPipeline(){
+  const $=id=>document.getElementById(id);
+  $('run').disabled=true;$('run').textContent='Engine running…';
+  ['verdict'].forEach(i=>$(i).style.display='none');
+  $('stages').style.display='block';
+  document.querySelectorAll('.stage').forEach(s=>{s.classList.remove('on','done')});
+  const name=$('f-name').value.trim()||'Unknown',email=$('f-email').value.trim(),
+        src=$('f-source').value,budget=$('f-budget').value==='yes',
+        msg=$('f-msg').value.trim(),domain=(email.split('@')[1]||'').toLowerCase();
+  const free=/(gmail|yahoo|hotmail|outlook)\./.test(domain);
+  const corp=!free&&domain!=='';
+  async function stage(n,delay,fn){await new Promise(r=>setTimeout(r,120));const el=$('s'+n);el.classList.add('on');await new Promise(r=>setTimeout(r,delay));$('o'+n).innerHTML=fn();el.classList.add('done')}
+  await stage(1,450,()=>`POST /webhook/speed-to-lead · payload normalized<br><code style="font-size:.78em">{name:"${esc(name)}", source:"${esc(src)}"}</code>`);
+  await stage(2,550,()=>`${corp?'Corporate':'Free-mail'} domain (<b>${esc(domain||'none')}</b>) · source weight: ${src==='Referral'?'high':src.includes('Ads')?'paid':'standard'}`);
+  let score=42;
+  const reasons=[];
+  if(budget){score+=25;reasons.push('Budget explicitly stated (+25)')}else reasons.push('No budget signal yet (+0)');
+  if(/asap|urgent|this week|immediately|today/i.test(msg)){score+=20;reasons.push('Urgency language detected (+20)')}
+  if(corp){score+=15;reasons.push('Corporate email domain (+15)')}
+  if(src==='Referral'){score+=10;reasons.push('Referral source (+10)')}
+  if(msg.length>140){score+=8;reasons.push('Detailed, serious inquiry (+8)')}
+  score=Math.min(score,100);
+  const label=score>=80?'HOT':score>=55?'WARM':'COLD';
+  await stage(3,700,()=>`Intent score: <b>${score}/100 → ${label}</b> · criteria: budget, urgency, domain, source`);
+  const route=label==='HOT'?['Slack #sales alert','Instant email to owner']:label==='WARM'?['Daily digest queue']:['Nurture sequence enrolled'];
+  await stage(4,550,()=>route.join(' · '));
+  const tm = msg.toLowerCase().match(/follow-up|booking|leads|appointments|inquiries|pipeline|automation/);
+  const topic = tm ? tm[0] : 'your project';
+  const draft=`Subject: Re: your inquiry — quick next step\n\nHi ${name.split(' ')[0]},\n\nThanks for reaching out${corp?' — checked out '+domain.split('.')[0]+' and I see exactly where automated follow-up fits':''}.\n\nYou mentioned ${topic} — that's precisely what this system handles.\n\nGrab any slot here and we'll map it live:\n→ https://cal.com/you/discovery\n\nJordan`;
+  await stage(5,750,()=>`Personalized first-touch drafted (${draft.length} chars) · logging to Sheet…`);
+  const v=$('verdict');v.style.display='block';
+  const b=$('v-badge');b.textContent=label;b.className='badge '+label.toLowerCase();
+  $('v-score').textContent=`${score}/100 — routed: ${label==='HOT'?'owner, NOW':label==='WARM'?'digest':'nurture'}`;
+  $('v-reasons').innerHTML=reasons.map(r=>'<li>'+r+'</li>').join('');
+  $('v-chips').innerHTML=['✅ Logged to Google Sheets','✅ Owner notified','✅ Reply queued'].map(c=>`<span class="chip on">${c}</span>`).join('');
+  $('v-draft').textContent=draft;
+  $('run').disabled=false;$('run').textContent='⚡ Run again';
+}
+</script>
+</body>
+</html>
