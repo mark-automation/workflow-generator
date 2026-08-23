@@ -1,0 +1,42 @@
+{
+  "x-wfgen": {
+    "name": "lead-enrich-drop",
+    "description": "Webhook intake of a raw lead, appends it to a local CSV ledger with timestamp — the drop-box stage of a lead pipeline.",
+    "params": {
+      "ledger_path": {"type": "string", "required": true, "description": "Absolute path to CSV ledger file"},
+      "webhook_path": {"type": "string", "required": false, "description": "Webhook path segment (default: lead-drop)"}
+    }
+  },
+  "name": "wfgen: lead-enrich-drop",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "$param:webhook_path",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "44444444-0001-4000-8000-000000000001",
+      "name": "Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-200, 0],
+      "webhookId": "44444444-aaaa-4bbb-8ccc-00000000000a"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Append lead to CSV ledger\nconst fs = require('fs');\nconst b = $input.first().json.body || $input.first().json;\nconst row = [b.name || '', b.email || '', b.source || '', b.message || ''].map(v => String(v).replace(/\"/g, '\"\"'));\nconst line = `\"${new Date().toISOString()}\",\"${row.join('\",\"')}\"`;\nconst path = '$param:ledger_path';\nif (!fs.existsSync(path)) fs.writeFileSync(path, 'received_at,name,email,source,message\\n');\nfs.appendFileSync(path, line + '\\n');\nreturn [{ json: { ok: true, logged: b.email || 'unknown', total_bytes: fs.statSync(path).size } }];"
+      },
+      "id": "44444444-0002-4000-8000-000000000002",
+      "name": "Append Ledger",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [20, 0]
+    }
+  ],
+  "connections": {
+    "Lead Webhook": { "main": [[{ "node": "Append Ledger", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

@@ -1,0 +1,57 @@
+{
+  "x-wfgen": {
+    "name": "discord-digest",
+    "description": "Scheduled digest: scans a local JSONL/CSV source, builds a summary, posts it to a Discord channel via webhook.",
+    "params": {
+      "schedule_cron":  {"type": "string", "required": true, "description": "5-field cron, e.g. 0 9 * * 1 = Mondays 09:00"},
+      "discord_webhook_url": {"type": "string", "required": true, "description": "Discord channel webhook URL"},
+      "source_path": {"type": "string", "required": true, "description": "Absolute path to the data file to digest"},
+      "digest_title": {"type": "string", "required": false, "description": "Header line for the digest post"}
+    }
+  },
+  "name": "wfgen: discord-digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "$param:schedule_cron" }] }
+      },
+      "id": "11111111-0001-4000-8000-000000000001",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-200, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build digest from source file\nconst fs = require('fs');\nconst src = '$param:source_path';\nlet lines = [];\nif (fs.existsSync(src)) {\n  lines = fs.readFileSync(src, 'utf8').split('\\n').filter(Boolean);\n}\nconst title = '$param:digest_title' || '📋 Digest';\nconst body = lines.length\n  ? lines.slice(-25).map(l => '• ' + l.replace(/^[\\[{\"].*?[,}]?/, '').slice(0, 120)).join('\\n')\n  : '_No new entries since last run._';\nreturn [{ json: { content: `**${title}** (${lines.length} entries)\\n${body}` } }];"
+      },
+      "id": "11111111-0002-4000-8000-000000000002",
+      "name": "Build Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [20, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "$param:discord_webhook_url",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $json.content }) }}",
+        "options": {}
+      },
+      "id": "11111111-0003-4000-8000-000000000003",
+      "name": "Post to Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 0],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Schedule": { "main": [[{ "node": "Build Digest", "type": "main", "index": 0 }]] },
+    "Build Digest": { "main": [[{ "node": "Post to Discord", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

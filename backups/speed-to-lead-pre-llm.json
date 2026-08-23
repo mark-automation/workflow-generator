@@ -1,0 +1,359 @@
+{
+ "id": "ZhsfNN9kseNoFZRY",
+ "name": "Speed-to-Lead Engine (Core Proof)",
+ "nodes": [
+  {
+   "parameters": {
+    "content": "## \u26a1 Speed-to-Lead Engine\n\n**Setup (~15 min):**\n1. Import this workflow \u2192 activate it \u2192 copy the **Production webhook URL**\n2. Point your form / ad platform / chatbot to POST that URL\n3. Connect credentials: **Google Sheets** (create a sheet, paste its ID below), **Gmail**, **Slack**\n4. Optional: swap the rule-based scorer in *AI Qualifier* for an OpenAI call (prompt pre-built in the node)\n\nScoring: HOT \u2265 80 \u00b7 WARM \u2265 55 \u00b7 COLD < 55",
+    "height": 500,
+    "width": 340
+   },
+   "id": "a1b2c3d4-0001-4000-8000-000000000001",
+   "name": "Sticky Note",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    -620,
+    -140
+   ]
+  },
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "speed-to-lead",
+    "responseMode": "responseNode",
+    "options": {}
+   },
+   "id": "a1b2c3d4-0002-4000-8000-000000000002",
+   "name": "Lead Webhook",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    -220,
+    180
+   ],
+   "webhookId": "b7e3f1a2-5c4d-4e6f-9a8b-1c2d3e4f5a6b"
+  },
+  {
+   "parameters": {
+    "assignments": {
+     "assignments": [
+      {
+       "id": "f1",
+       "name": "name",
+       "type": "string",
+       "value": "={{ $json.body.name || $json.name || 'Unknown' }}"
+      },
+      {
+       "id": "f2",
+       "name": "email",
+       "type": "string",
+       "value": "={{ $json.body.email || $json.email || '' }}"
+      },
+      {
+       "id": "f3",
+       "name": "phone",
+       "type": "string",
+       "value": "={{ $json.body.phone || $json.phone || '' }}"
+      },
+      {
+       "id": "f4",
+       "name": "company",
+       "type": "string",
+       "value": "={{ $json.body.company || $json.company || '' }}"
+      },
+      {
+       "id": "f5",
+       "name": "source",
+       "type": "string",
+       "value": "={{ $json.body.source || $json.source || 'unknown' }}"
+      },
+      {
+       "id": "f6",
+       "name": "message",
+       "type": "string",
+       "value": "={{ $json.body.message || $json.message || '' }}"
+      },
+      {
+       "id": "f7",
+       "name": "received_at",
+       "type": "string",
+       "value": "={{ $now.toISO() }}"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "a1b2c3d4-0003-4000-8000-000000000003",
+   "name": "Normalize Lead",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    0,
+    180
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "// \u2500\u2500 AI Qualifier \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n// Deterministic intent scoring with an optional LLM upgrade.\n// To upgrade: send $json.llm_prompt to OpenAI (chat/completions) and\n// replace `score`/`reasons` with the model's JSON response.\n\nconst lead = $input.first().json;\nconst msg = (lead.message || '').toLowerCase();\nconst domain = (lead.email.split('@')[1] || '').toLowerCase();\nconst freeMail = /(gmail|yahoo|hotmail|outlook|icloud)\\./.test(domain);\nconst reasons = [];\nlet score = 42;\n\n// 1. Budget signal\nif (/budget|pricing|quote|cost|\\$\\d|approved/.test(msg)) {\n  score += 25; reasons.push('Budget/pricing language (+25)');\n} else { reasons.push('No budget signal (+0)'); }\n\n// 2. Urgency signal\nif (/asap|urgent|this week|immediately|today|move fast|deadline/.test(msg)) {\n  score += 20; reasons.push('Urgency language (+20)');\n}\n\n// 3. Domain quality\nif (domain && !freeMail) { score += 15; reasons.push('Corporate domain (+15)'); }\nelse if (freeMail) { reasons.push('Free-mail domain (+0)'); }\n\n// 4. Source weighting\nconst ref = /referral|partner/i.test(lead.source);\nconst paid = /ads|campaign/i.test(lead.source);\nif (ref) { score += 10; reasons.push('Referral source (+10)'); }\nelse if (paid) { score += 5; reasons.push('Paid source (+5)'); }\n\n// 5. Effort signal\nif (msg.length > 140) { score += 8; reasons.push('Detailed inquiry (+8)'); }\n\nscore = Math.max(0, Math.min(100, score));\nconst route = score >= 80 ? 'hot' : score >= 55 ? 'warm' : 'cold';\n\n// Pre-built LLM prompt (for the optional upgrade):\nconst llm_prompt =\n  'You are a lead-qualification engine. Score this inbound lead 0-100 on ' +\n  'purchase intent given: budget signals, urgency, business fit, effort. ' +\n  'Respond ONLY with JSON {\"score\": <int>, \"reasons\": [string], \"route\": ' +\n  '\"hot|warm|cold\"} where hot>=80, warm>=55.\\n\\nLEAD:\\n' +\n  JSON.stringify(lead, null, 2);\n\n\n// 6. Personalized first-touch draft (the sub-60-second reply)\nconst topicM = msg.match(/follow[- ]?up|booking|leads?|appointments|inquir(y|ies)|pipeline|automation|website|crm|chatbot/);\nconst topic = topicM ? topicM[0] : 'your project';\nconst first_name = (lead.name || 'there').split(' ')[0].replace(/[^\\w'-]/g, '') || 'there';\nconst booking = 'https://calendly.com/keroro/30min';\nconst first_touch = {\n  subject: 'Re: your inquiry - quick next step',\n  body: 'Hi ' + first_name + ',\\n\\nThanks for reaching out about ' + topic +\n        '. That is exactly what this system handles.\\n\\nGrab any slot that suits you and we map it live:\\n' +\n        booking + '\\n\\nDan'\n};\nconst next_actions = route === 'hot'\n  ? ['slack_alert:#sales', 'instant_first_touch_email', 'log_to_sheet']\n  : route === 'warm'\n    ? ['owner_daily_digest', 'log_to_sheet']\n    : ['enroll_nurture_sequence', 'log_to_sheet'];\n\nreturn [{ json: {\n  ...lead,\n  score,\n  route,\n  reasons,\n  llm_prompt,\n  domain,\n  first_touch,\n  next_actions,\n  qualified_at: new Date().toISOString()\n} }];"
+   },
+   "id": "a1b2c3d4-0004-4000-8000-000000000004",
+   "name": "AI Qualifier",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    220,
+    180
+   ]
+  },
+  {
+   "parameters": {
+    "rules": {
+     "values": [
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "strict",
+         "version": 2
+        },
+        "conditions": [
+         {
+          "id": "hot-1",
+          "leftValue": "={{ $json.score }}",
+          "rightValue": 80,
+          "operator": {
+           "type": "number",
+           "operation": "gte"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "hot"
+      },
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "strict",
+         "version": 2
+        },
+        "conditions": [
+         {
+          "id": "warm-1",
+          "leftValue": "={{ $json.score }}",
+          "rightValue": 55,
+          "operator": {
+           "type": "number",
+           "operation": "gte"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "warm"
+      }
+     ]
+    },
+    "options": {
+     "fallbackOutput": "extra"
+    }
+   },
+   "id": "a1b2c3d4-0005-4000-8000-000000000005",
+   "name": "Route by Score",
+   "type": "n8n-nodes-base.switch",
+   "typeVersion": 3,
+   "position": [
+    440,
+    180
+   ]
+  },
+  {
+   "parameters": {
+    "respondWith": "text",
+    "responseBody": "={{ JSON.stringify({ status: 'processed', score: $json.score, route: $json.route, reasons: $json.reasons, first_touch: $json.first_touch, next_actions: $json.next_actions, received_at: $json.received_at, qualified_at: $json.qualified_at }) }}",
+    "options": {
+     "responseHeaders": {
+      "entries": [
+       {
+        "name": "Content-Type",
+        "value": "application/json"
+       }
+      ]
+     }
+    }
+   },
+   "id": "a1b2c3d4-0010-4000-8000-000000000010",
+   "name": "Respond",
+   "type": "n8n-nodes-base.respondToWebhook",
+   "typeVersion": 1.1,
+   "position": [
+    940,
+    260
+   ]
+  },
+  {
+   "parameters": {
+    "assignments": {
+     "assignments": [
+      {
+       "id": "f1",
+       "name": "channel",
+       "type": "string",
+       "value": "#sales"
+      },
+      {
+       "id": "f2",
+       "name": "dispatch_type",
+       "type": "string",
+       "value": "slack_alert"
+      },
+      {
+       "id": "f3",
+       "name": "text",
+       "type": "string",
+       "value": "=\ud83d\udd25 HOT LEAD ({{ $json.score }}/100)\n*{{ $json.name }}* \u2014 {{ $json.company || 'n/a' }}\n\u2709\ufe0f {{ $json.email }}\n\ud83d\udcac {{ $json.message.slice(0, 220) }}"
+      }
+     ]
+    },
+    "options": {},
+    "includeOtherFields": true
+   },
+   "id": "a1b2c3d4-0011-4000-8000-000000000011",
+   "name": "Dispatch Hot Payload",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    680,
+    -40
+   ]
+  },
+  {
+   "parameters": {
+    "assignments": {
+     "assignments": [
+      {
+       "id": "f1",
+       "name": "channel",
+       "type": "string",
+       "value": "owner@example.com"
+      },
+      {
+       "id": "f2",
+       "name": "dispatch_type",
+       "type": "string",
+       "value": "email_digest"
+      },
+      {
+       "id": "f3",
+       "name": "subject",
+       "type": "string",
+       "value": "=\ud83d\udccb Warm lead: {{ $json.name }} ({{ $json.score }}/100)"
+      }
+     ]
+    },
+    "options": {},
+    "includeOtherFields": true
+   },
+   "id": "a1b2c3d4-0012-4000-8000-000000000012",
+   "name": "Dispatch Warm Payload",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    680,
+    360
+   ]
+  }
+ ],
+ "connections": {
+  "Lead Webhook": {
+   "main": [
+    [
+     {
+      "node": "Normalize Lead",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Normalize Lead": {
+   "main": [
+    [
+     {
+      "node": "AI Qualifier",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "AI Qualifier": {
+   "main": [
+    [
+     {
+      "node": "Route by Score",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Route by Score": {
+   "main": [
+    [
+     {
+      "node": "Dispatch Hot Payload",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Dispatch Warm Payload",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Respond",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Dispatch Hot Payload": {
+   "main": [
+    [
+     {
+      "node": "Respond",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Dispatch Warm Payload": {
+   "main": [
+    [
+     {
+      "node": "Respond",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": true
+}

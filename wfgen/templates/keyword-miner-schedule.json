@@ -1,0 +1,57 @@
+{
+  "x-wfgen": {
+    "name": "keyword-miner-schedule",
+    "description": "Scheduled keyword/phrase miner: scans a text corpus file for configured keywords, posts match counts and top lines to Discord.",
+    "params": {
+      "schedule_cron": {"type": "string", "required": true, "description": "5-field cron"},
+      "corpus_path": {"type": "string", "required": true, "description": "Absolute path to the text file to scan"},
+      "keywords": {"type": "list", "required": true, "description": "Comma-separated keywords to mine"},
+      "discord_webhook_url": {"type": "string", "required": true, "description": "Discord channel webhook URL"}
+    }
+  },
+  "name": "wfgen: keyword-miner-schedule",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "$param:schedule_cron" }] }
+      },
+      "id": "33333333-0001-4000-8000-000000000001",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-200, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Keyword mine over a local corpus\nconst fs = require('fs');\nconst src = '$param:corpus_path';\nconst kws = '$param:keywords'.split(',').map(k => k.trim().toLowerCase()).filter(Boolean);\nlet hits = {};\nlet sample = [];\nif (fs.existsSync(src) && kws.length) {\n  const lines = fs.readFileSync(src, 'utf8').split('\\n');\n  for (const line of lines) {\n    const low = line.toLowerCase();\n    for (const kw of kws) {\n      if (low.includes(kw)) {\n        hits[kw] = (hits[kw] || 0) + 1;\n        if (sample.length < 5 && !sample.includes(line)) sample.push(line.slice(0, 110));\n      }\n    }\n  }\n}\nconst summary = Object.entries(hits).map(([k, v]) => `• **${k}**: ${v}`).join('\\n') || '_no matches_';\nconst content = `⛏️ **Keyword mine** (${new Date().toISOString().slice(0,10)})\\n${summary}${sample.length ? '\\n\\nTop lines:\\n' + sample.map(s => '> ' + s).join('\\n') : ''}`;\nreturn [{ json: { content } }];"
+      },
+      "id": "33333333-0002-4000-8000-000000000002",
+      "name": "Mine Keywords",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [20, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "$param:discord_webhook_url",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $json.content }) }}",
+        "options": {}
+      },
+      "id": "33333333-0003-4000-8000-000000000003",
+      "name": "Post to Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 0],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Schedule": { "main": [[{ "node": "Mine Keywords", "type": "main", "index": 0 }]] },
+    "Mine Keywords": { "main": [[{ "node": "Post to Discord", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

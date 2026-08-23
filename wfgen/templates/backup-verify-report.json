@@ -1,0 +1,57 @@
+{
+  "x-wfgen": {
+    "name": "backup-verify-report",
+    "description": "Scheduled backup verification: checks a target directory's latest file age/size, posts PASS/FAIL health report to Discord.",
+    "params": {
+      "schedule_cron": {"type": "string", "required": true, "description": "5-field cron"},
+      "watch_path": {"type": "string", "required": true, "description": "Directory whose newest file is the backup"},
+      "max_age_hours": {"type": "string", "required": true, "description": "Backup older than this many hours = FAIL"},
+      "discord_webhook_url": {"type": "string", "required": true, "description": "Discord channel webhook URL"}
+    }
+  },
+  "name": "wfgen: backup-verify-report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "$param:schedule_cron" }] }
+      },
+      "id": "55555555-0001-4000-8000-000000000001",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-200, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verify newest backup in watch dir\nconst fs = require('fs');\nconst p = '$param:watch_path';\nconst maxAgeH = Number('$param:max_age_hours') || 24;\nlet status = 'FAIL', detail = '';\ntry {\n  const files = fs.readdirSync(p).filter(f => !f.startsWith('.')).map(f => {\n    const st = fs.statSync(require('path').join(p, f));\n    return { f, mtime: st.mtimeMs, size: st.size };\n  }).sort((a, b) => b.mtime - a.mtime);\n  if (!files.length) detail = 'directory empty';\n  else {\n    const newest = files[0];\n    const ageH = (Date.now() - newest.mtime) / 3600000;\n    status = ageH <= maxAgeH ? 'PASS' : 'FAIL';\n    detail = `${newest.f} · ${(newest.size/1024).toFixed(1)}KB · age ${ageH.toFixed(1)}h (max ${maxAgeH}h)`;\n  }\n} catch (e) { detail = 'error: ' + e.message; }\nconst icon = status === 'PASS' ? '✅' : '🔴';\nreturn [{ json: { content: `${icon} **Backup check ${status}** — \\`${p}\\`\\n${detail}` } }];"
+      },
+      "id": "55555555-0002-4000-8000-000000000002",
+      "name": "Verify Backup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [20, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "$param:discord_webhook_url",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $json.content }) }}",
+        "options": {}
+      },
+      "id": "55555555-0003-4000-8000-000000000003",
+      "name": "Post Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 0],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Schedule": { "main": [[{ "node": "Verify Backup", "type": "main", "index": 0 }]] },
+    "Verify Backup": { "main": [[{ "node": "Post Report", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}
