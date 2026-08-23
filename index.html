@@ -165,14 +165,14 @@ footer a{color:var(--dim)}
 <section class="final"><div class="wrap">
 <h2>Stop losing leads to slow replies.</h2>
 <p class="sub" style="margin-bottom:26px">Fixed scope, fixed timeline: live on your stack in days, tuned in one call.</p>
-<a class="btn-big cta-sm" href="mailto:jordanlacandula@hotmail.com?subject=Speed-to-Lead%20Engine%20—%20build%20inquiry">Book this build →</a>
-<p class="trust">Built by Jordan Lacandula · production systems since 2013 · <a href="https://github.com/mark-automation/workflow-generator" style="color:var(--acc2)">source ↗</a></p>
+<a class="btn-big cta-sm" href="https://calendly.com/keroro/30min?hide_gdpr_banner=1" target="_blank" rel="noopener">Book this build →</a>
+<p class="trust">Built by <b>Dan</b> · production systems since 2013 · <a href="https://github.com/mark-automation/workflow-generator" style="color:var(--acc2)">source ↗</a></p>
 </div></section>
 
 </main>
 
 <footer><div class="wrap" style="display:flex;justify-content:space-between;width:100%;flex-wrap:wrap;gap:10px">
-<span>© 2026 Jordan Lacandula</span>
+<span>© 2026 Dan — Speed-to-Lead Engine</span>
 <span><a href="https://nekobiz.com">Haki ↗</a> · <a href="https://mark-automation.github.io/jordan-site/">Main site ↗</a></span>
 </div></footer>
 
@@ -206,7 +206,9 @@ async function runPipeline(){
   await stage(4,550,()=>route.join(' · '));
   const tm = msg.toLowerCase().match(/follow-up|booking|leads|appointments|inquiries|pipeline|automation/);
   const topic = tm ? tm[0] : 'your project';
-  const draft=`Subject: Re: your inquiry — quick next step\n\nHi ${name.split(' ')[0]},\n\nThanks for reaching out${corp?' — checked out '+domain.split('.')[0]+' and I see exactly where automated follow-up fits':''}.\n\nYou mentioned ${topic} — that's precisely what this system handles.\n\nGrab any slot here and we'll map it live:\n→ https://cal.com/you/discovery\n\nJordan`;
+  const draft=`Subject: Re: your inquiry — quick next step\n\nHi ${name.split(' ')[0]},\n\nThanks for reaching out${corp?' — checked out '+domain.split('.')[0]+' and I see exactly where automated follow-up fits':''}.\n\nYou mentioned ${topic} — that's precisely what this system handles.\n\nGrab any slot here and we'll map it live:\n→ https://calendly.com/keroro/30min
+
+Dan`;
   await stage(5,750,()=>`Personalized first-touch drafted (${draft.length} chars) · logging to Sheet…`);
   const v=$('verdict');v.style.display='block';
   const b=$('v-badge');b.textContent=label;b.className='badge '+label.toLowerCase();
