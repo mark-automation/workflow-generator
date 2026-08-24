@@ -1,0 +1,9 @@
+# Speed-to-Lead Engine — AI qualifies & books your leads while you sleep
+
+> Importable n8n workflow: inbound lead hits your form → AI scores, routes, drafts a personalized reply and books the call in under 60 seconds. Pattern-mined from real client briefs by Mark1 Automation.
+
+This page presents a single product: a production-grade n8n workflow (Speed-to-Lead Engine) that automates inbound-lead handling — scoring, routing, personalized first-touch drafting, and call booking. It ships as an importable n8n workflow JSON with setup documentation. The page covers what it does, how it works, pricing/packaging, and how to get it. For related automation systems and live demos, see [the main Dan site](https://mark-automation.github.io/jordan-site/).
+
+## Page sections
+
+- [Home / overview](https://mark-automation.github.io/workflow-generator/): full product detail — features, pipeline stages, requirements, and acquisition
