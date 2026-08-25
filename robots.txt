@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mark-automation.github.io/workflow-generator/sitemap.xml
