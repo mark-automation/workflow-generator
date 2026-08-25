@@ -108,17 +108,17 @@ footer a{color:var(--dim)}
 <h3>Inbound lead simulator</h3>
 <div class="hint">Same payload shape the n8n webhook receives.</div>
 <div class="frow">
-<div><label>Name</label><input id="f-name" value="Sarah Mitchell"></div>
-<div><label>Email</label><input id="f-email" value="sarah@northstaterealty.com"></div>
+<div><label for="f-name">Name</label><input id="f-name" value="Sarah Mitchell"></div>
+<div><label for="f-email">Email</label><input id="f-email" value="sarah@northstaterealty.com"></div>
 </div>
 <div class="frow">
-<div><label>Source</label>
+<div><label for="f-source">Source</label>
 <select id="f-source"><option>Website form</option><option>Facebook Ads</option><option>Google Ads</option><option>Referral</option></select></div>
-<div><label>Budget mentioned?</label>
+<div><label for="f-budget">Budget mentioned?</label>
 <select id="f-budget"><option value="no">Not stated</option><option value="yes" selected>Yes — explicit</option></select></div>
 </div>
 <div class="fgroup"><label>Message</label>
-<textarea id="f-msg">Hi — we're scaling our brokerage and need automated follow-up for new seller inquiries ASAP. We get 40+ leads/week and currently respond manually. Looking to move this week. Budget approved.</textarea></div>
+<textarea id="f-msg" aria-label="Message">Hi — we're scaling our brokerage and need automated follow-up for new seller inquiries ASAP. We get 40+ leads/week and currently respond manually. Looking to move this week. Budget approved.</textarea></div>
 <button class="runbtn" id="run" onclick="runPipeline()">⚡ Run engine</button>
 
 <div class="stages" id="stages">
